@@ -30,6 +30,7 @@
 
 using UnityEngine;
 using System.Collections;
+using System;
 
 public class PlaceMonster : MonoBehaviour
 {
@@ -37,17 +38,26 @@ public class PlaceMonster : MonoBehaviour
     public GameObject monsterPrefab;
     private GameObject monster;
     private GameManagerBehavior gameManager;
+    private AblyManagerBehavior ablyManager;
+    private Queue actions = new Queue();
 
     // Use this for initialization
     void Start()
     {
         gameManager = GameObject.Find("GameManager").GetComponent<GameManagerBehavior>();
+        ablyManager = GameObject.Find("AblyManager").GetComponent<AblyManagerBehavior>();
+        ablyManager.monsterPlacementChannel.Subscribe("spot:" + name, message =>
+        {
+            // Need to uniquely identify actions to avoid unintentional upgrade when trying to place, etc.
+            actions.Enqueue(message.Data);
+        });
     }
 
     // Update is called once per frame
     void Update()
     {
-
+        if (actions.Count == 0) return;
+        PlaceOrUpgradeMonster(int.Parse((string)actions.Dequeue()));
     }
 
     private bool CanPlaceMonster()
@@ -56,15 +66,25 @@ public class PlaceMonster : MonoBehaviour
         return monster == null && gameManager.Gold >= cost;
     }
 
-    //1
+
     void OnMouseUp()
     {
-        //2
         if (CanPlaceMonster())
         {
-            //3
-            monster = (GameObject) Instantiate(monsterPrefab, transform.position, Quaternion.identity);
-            //4
+            ablyManager.monsterPlacementChannel.Publish("spot:" + name, "0");
+        }
+        else if (CanUpgradeMonster())
+        {
+            MonsterData monsterData = monster.GetComponent<MonsterData>();
+            ablyManager.monsterPlacementChannel.Publish("spot:" + name, monsterData.levels.IndexOf(monsterData.getNextLevel()).ToString());
+        }
+    }
+
+    private void PlaceOrUpgradeMonster(int index)
+    {
+        if (CanPlaceMonster() && index == 0)
+        {
+            monster = (GameObject)Instantiate(monsterPrefab, transform.position, Quaternion.identity);
             AudioSource audioSource = gameObject.GetComponent<AudioSource>();
             audioSource.PlayOneShot(audioSource.clip);
 
@@ -72,11 +92,15 @@ public class PlaceMonster : MonoBehaviour
         }
         else if (CanUpgradeMonster())
         {
-            monster.GetComponent<MonsterData>().increaseLevel();
-            AudioSource audioSource = gameObject.GetComponent<AudioSource>();
-            audioSource.PlayOneShot(audioSource.clip);
+            MonsterData monsterData = monster.GetComponent<MonsterData>();
+            if (monsterData.getNextLevel() == monsterData.levels[index])
+            {
+                monster.GetComponent<MonsterData>().increaseLevel();
+                AudioSource audioSource = gameObject.GetComponent<AudioSource>();
+                audioSource.PlayOneShot(audioSource.clip);
 
-            gameManager.Gold -= monster.GetComponent<MonsterData>().CurrentLevel.cost;
+                gameManager.Gold -= monster.GetComponent<MonsterData>().CurrentLevel.cost;
+            }
         }
     }
 
