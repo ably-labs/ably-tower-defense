@@ -49,6 +49,7 @@ public class SpawnEnemy : MonoBehaviour
     public int timeBetweenWaves = 5;
 
     private GameManagerBehavior gameManager;
+    private AblyManagerBehavior ablyManager;
 
     private float lastSpawnTime;
     private int enemiesSpawned = 0;
@@ -58,11 +59,19 @@ public class SpawnEnemy : MonoBehaviour
     {
         lastSpawnTime = Time.time;
         gameManager = GameObject.Find("GameManager").GetComponent<GameManagerBehavior>();
+        ablyManager = GameObject.Find("AblyManager").GetComponent<AblyManagerBehavior>();
     }
 
     // Update is called once per frame
     void Update()
     {
+        if (!ablyManager.started)
+        {
+            // This doesn't account for any time previously passed
+            lastSpawnTime = Time.time;
+            return;
+        }
+
         // 1
         int currentWave = gameManager.Wave;
         if (currentWave < waves.Length)

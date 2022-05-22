@@ -34,7 +34,6 @@ using UnityEngine.UI;
 
 public class GameManagerBehavior : MonoBehaviour
 {
-
     public Text goldLabel;
     private int gold;
     public int Gold
@@ -55,7 +54,7 @@ public class GameManagerBehavior : MonoBehaviour
 
     public bool gameOver = false;
 
-    private int wave;
+    private int wave = 0;
     public int Wave
     {
         get { return wave; }
@@ -116,7 +115,6 @@ public class GameManagerBehavior : MonoBehaviour
     void Start()
     {
         Gold = 1000;
-        Wave = 0;
         Health = 5;
     }
 

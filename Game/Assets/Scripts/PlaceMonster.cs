@@ -46,7 +46,7 @@ public class PlaceMonster : MonoBehaviour
     {
         gameManager = GameObject.Find("GameManager").GetComponent<GameManagerBehavior>();
         ablyManager = GameObject.Find("AblyManager").GetComponent<AblyManagerBehavior>();
-        ablyManager.monsterPlacementChannel.Subscribe("spot:" + name, message =>
+        ablyManager.gameChannel.Subscribe("spot:" + name, message =>
         {
             // Need to uniquely identify actions to avoid unintentional upgrade when trying to place, etc.
             actions.Enqueue(message.Data);
@@ -71,12 +71,12 @@ public class PlaceMonster : MonoBehaviour
     {
         if (CanPlaceMonster())
         {
-            ablyManager.monsterPlacementChannel.Publish("spot:" + name, "0");
+            ablyManager.gameChannel.Publish("spot:" + name, "0");
         }
         else if (CanUpgradeMonster())
         {
             MonsterData monsterData = monster.GetComponent<MonsterData>();
-            ablyManager.monsterPlacementChannel.Publish("spot:" + name, monsterData.levels.IndexOf(monsterData.getNextLevel()).ToString());
+            ablyManager.gameChannel.Publish("spot:" + name, monsterData.levels.IndexOf(monsterData.getNextLevel()).ToString());
         }
     }
 
