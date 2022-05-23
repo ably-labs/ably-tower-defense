@@ -32,6 +32,12 @@ using UnityEngine;
 using System.Collections;
 using System;
 
+public class PlaceMonsterData
+{
+    public int monsterID;
+    public DateTimeOffset? timestamp;
+}
+
 public class PlaceMonster : MonoBehaviour
 {
 
@@ -49,7 +55,10 @@ public class PlaceMonster : MonoBehaviour
         ablyManager.gameChannel.Subscribe("spot:" + name, message =>
         {
             // Need to uniquely identify actions to avoid unintentional upgrade when trying to place, etc.
-            actions.Enqueue(message.Data);
+            PlaceMonsterData pmd = new PlaceMonsterData();
+            pmd.monsterID = int.Parse((string)message.Data);
+            pmd.timestamp = message.Timestamp;
+            actions.Enqueue(pmd);
         });
     }
 
@@ -57,7 +66,35 @@ public class PlaceMonster : MonoBehaviour
     void Update()
     {
         if (actions.Count == 0) return;
-        PlaceOrUpgradeMonster(int.Parse((string)actions.Dequeue()));
+        PlaceMonsterData pmd = (PlaceMonsterData) actions.Peek();
+        DateTimeOffset? startTime = ablyManager.startTimeAbly;
+        DateTimeOffset? msgTime = pmd.timestamp;
+        TimeSpan? diffTime = msgTime - startTime;
+        int ticksSince = ablyManager.ticksSinceStart;
+        float timeFromTicks = ticksSince * (1000 * Time.fixedDeltaTime);
+
+        if (!diffTime.HasValue)
+        {
+            PlaceOrUpgradeMonster(pmd.monsterID);
+            return;
+        }
+
+        if (timeFromTicks < diffTime.Value.TotalMilliseconds)
+        {
+            Time.timeScale = 20;
+            return;
+        }
+        else
+        {
+            Time.timeScale = 1;
+        }
+
+        // If we're 1 second past when the monster was requested to be placed, place it
+        if (timeFromTicks >= diffTime.Value.TotalMilliseconds + 1000)
+        {
+            actions.Dequeue();
+            PlaceOrUpgradeMonster(pmd.monsterID);
+        }
     }
 
     private bool CanPlaceMonster()
@@ -80,9 +117,9 @@ public class PlaceMonster : MonoBehaviour
         }
     }
 
-    private void PlaceOrUpgradeMonster(int index)
+    private void PlaceOrUpgradeMonster(int monsterLevel)
     {
-        if (CanPlaceMonster() && index == 0)
+        if (CanPlaceMonster() && monsterLevel == 0)
         {
             monster = (GameObject)Instantiate(monsterPrefab, transform.position, Quaternion.identity);
             AudioSource audioSource = gameObject.GetComponent<AudioSource>();
@@ -93,7 +130,7 @@ public class PlaceMonster : MonoBehaviour
         else if (CanUpgradeMonster())
         {
             MonsterData monsterData = monster.GetComponent<MonsterData>();
-            if (monsterData.getNextLevel() == monsterData.levels[index])
+            if (monsterData.getNextLevel() == monsterData.levels[monsterLevel])
             {
                 monster.GetComponent<MonsterData>().increaseLevel();
                 AudioSource audioSource = gameObject.GetComponent<AudioSource>();

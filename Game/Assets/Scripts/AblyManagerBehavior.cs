@@ -1,3 +1,4 @@
+using System;
 using IO.Ably;
 using IO.Ably.Realtime;
 using UnityEngine;
@@ -11,9 +12,22 @@ public class AblyManagerBehavior : MonoBehaviour
     public IRealtimeChannel gameChannel;
 
     public bool started = false;
+    public DateTimeOffset? startTimeAbly;
+    public int ticksSinceStart = 0;
 
-    public void StartGame()
+    // Start is called before the first frame update
+    void Awake()
     {
+        gameChannel = realtime.Channels.Get(StateManagerBehavior.Instance.GameID);
+        gameChannel.Subscribe("start", (msg) =>
+        {
+            StartGame(msg.Timestamp);
+        });
+    }
+
+    public void StartGame(DateTimeOffset? timestamp)
+    {
+        if (!started) startTimeAbly = timestamp;
         started = true;
     }
 
@@ -22,13 +36,11 @@ public class AblyManagerBehavior : MonoBehaviour
         gameChannel.Publish("start", "");
     }
 
-    // Start is called before the first frame update
-    void Awake()
+    void FixedUpdate()
     {
-        gameChannel = realtime.Channels.Get(StateManagerBehavior.Instance.GameID);
-        gameChannel.Subscribe("start", (msg) =>
+        if (started)
         {
-            StartGame();
-        });
+            ticksSinceStart++;
+        }
     }
 }
