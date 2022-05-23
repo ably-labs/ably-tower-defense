@@ -75,7 +75,7 @@ public class PlaceMonster : MonoBehaviour
 
         if (!diffTime.HasValue)
         {
-            PlaceOrUpgradeMonster(pmd.monsterID);
+            PlaceOrUpgradeMonster(pmd.monsterID, msgTime);
             return;
         }
 
@@ -87,13 +87,8 @@ public class PlaceMonster : MonoBehaviour
         else
         {
             Time.timeScale = 1;
-        }
-
-        // If we're 1 second past when the monster was requested to be placed, place it
-        if (timeFromTicks >= diffTime.Value.TotalMilliseconds + 1000)
-        {
             actions.Dequeue();
-            PlaceOrUpgradeMonster(pmd.monsterID);
+            PlaceOrUpgradeMonster(pmd.monsterID, msgTime);
         }
     }
 
@@ -117,11 +112,12 @@ public class PlaceMonster : MonoBehaviour
         }
     }
 
-    private void PlaceOrUpgradeMonster(int monsterLevel)
+    private void PlaceOrUpgradeMonster(int monsterLevel, DateTimeOffset? timestamp)
     {
         if (CanPlaceMonster() && monsterLevel == 0)
         {
             monster = (GameObject)Instantiate(monsterPrefab, transform.position, Quaternion.identity);
+            monster.GetComponent<ShootEnemies>().timestamp = timestamp;
             AudioSource audioSource = gameObject.GetComponent<AudioSource>();
             audioSource.PlayOneShot(audioSource.clip);
 
@@ -133,6 +129,7 @@ public class PlaceMonster : MonoBehaviour
             if (monsterData.getNextLevel() == monsterData.levels[monsterLevel])
             {
                 monster.GetComponent<MonsterData>().increaseLevel();
+                monster.GetComponent<ShootEnemies>().timestamp = timestamp;
                 AudioSource audioSource = gameObject.GetComponent<AudioSource>();
                 audioSource.PlayOneShot(audioSource.clip);
 
