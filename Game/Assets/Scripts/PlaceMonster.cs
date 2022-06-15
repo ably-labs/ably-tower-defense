@@ -30,6 +30,13 @@
 
 using UnityEngine;
 using System.Collections;
+using System;
+
+public class PlaceMonsterData
+{
+    public int monsterID;
+    public DateTimeOffset? timestamp;
+}
 
 public class PlaceMonster : MonoBehaviour
 {
@@ -37,17 +44,52 @@ public class PlaceMonster : MonoBehaviour
     public GameObject monsterPrefab;
     private GameObject monster;
     private GameManagerBehavior gameManager;
+    private AblyManagerBehavior ablyManager;
+    private Queue actions = new Queue();
 
     // Use this for initialization
     void Start()
     {
         gameManager = GameObject.Find("GameManager").GetComponent<GameManagerBehavior>();
+        ablyManager = GameObject.Find("AblyManager").GetComponent<AblyManagerBehavior>();
+        ablyManager.gameChannel.Subscribe("spot:" + name, message =>
+        {
+            // Need to uniquely identify actions to avoid unintentional upgrade when trying to place, etc.
+            PlaceMonsterData pmd = new PlaceMonsterData();
+            pmd.monsterID = int.Parse((string)message.Data);
+            pmd.timestamp = message.Timestamp;
+            actions.Enqueue(pmd);
+        });
     }
 
     // Update is called once per frame
     void Update()
     {
+        if (actions.Count == 0) return;
+        PlaceMonsterData pmd = (PlaceMonsterData) actions.Peek();
+        DateTimeOffset? startTime = ablyManager.startTimeAbly;
+        DateTimeOffset? msgTime = pmd.timestamp;
+        TimeSpan? diffTime = msgTime - startTime;
+        int ticksSince = ablyManager.ticksSinceStart;
+        float timeFromTicks = ticksSince * (1000 * Time.fixedDeltaTime);
 
+        if (!diffTime.HasValue)
+        {
+            PlaceOrUpgradeMonster(pmd.monsterID, msgTime);
+            return;
+        }
+
+        if (timeFromTicks < diffTime.Value.TotalMilliseconds)
+        {
+            Time.timeScale = 20;
+            return;
+        }
+        else
+        {
+            Time.timeScale = 1;
+            actions.Dequeue();
+            PlaceOrUpgradeMonster(pmd.monsterID, msgTime);
+        }
     }
 
     private bool CanPlaceMonster()
@@ -56,15 +98,26 @@ public class PlaceMonster : MonoBehaviour
         return monster == null && gameManager.Gold >= cost;
     }
 
-    //1
+
     void OnMouseUp()
     {
-        //2
         if (CanPlaceMonster())
         {
-            //3
-            monster = (GameObject) Instantiate(monsterPrefab, transform.position, Quaternion.identity);
-            //4
+            ablyManager.gameChannel.Publish("spot:" + name, "0");
+        }
+        else if (CanUpgradeMonster())
+        {
+            MonsterData monsterData = monster.GetComponent<MonsterData>();
+            ablyManager.gameChannel.Publish("spot:" + name, monsterData.levels.IndexOf(monsterData.getNextLevel()).ToString());
+        }
+    }
+
+    private void PlaceOrUpgradeMonster(int monsterLevel, DateTimeOffset? timestamp)
+    {
+        if (CanPlaceMonster() && monsterLevel == 0)
+        {
+            monster = (GameObject)Instantiate(monsterPrefab, transform.position, Quaternion.identity);
+            monster.GetComponent<ShootEnemies>().timestamp = timestamp;
             AudioSource audioSource = gameObject.GetComponent<AudioSource>();
             audioSource.PlayOneShot(audioSource.clip);
 
@@ -72,11 +125,16 @@ public class PlaceMonster : MonoBehaviour
         }
         else if (CanUpgradeMonster())
         {
-            monster.GetComponent<MonsterData>().increaseLevel();
-            AudioSource audioSource = gameObject.GetComponent<AudioSource>();
-            audioSource.PlayOneShot(audioSource.clip);
+            MonsterData monsterData = monster.GetComponent<MonsterData>();
+            if (monsterData.getNextLevel() == monsterData.levels[monsterLevel])
+            {
+                monster.GetComponent<MonsterData>().increaseLevel();
+                monster.GetComponent<ShootEnemies>().timestamp = timestamp;
+                AudioSource audioSource = gameObject.GetComponent<AudioSource>();
+                audioSource.PlayOneShot(audioSource.clip);
 
-            gameManager.Gold -= monster.GetComponent<MonsterData>().CurrentLevel.cost;
+                gameManager.Gold -= monster.GetComponent<MonsterData>().CurrentLevel.cost;
+            }
         }
     }
 

@@ -31,14 +31,17 @@
 using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
+using System;
 
 public class ShootEnemies : MonoBehaviour
 {
 
     public List<GameObject> enemiesInRange;
 
+    public DateTimeOffset? timestamp;
     private float lastShotTime;
     private MonsterData monsterData;
+    private AblyManagerBehavior ablyManager;
 
     // Use this for initialization
     void Start()
@@ -46,11 +49,28 @@ public class ShootEnemies : MonoBehaviour
         enemiesInRange = new List<GameObject>();
         lastShotTime = Time.time;
         monsterData = gameObject.GetComponentInChildren<MonsterData>();
+        ablyManager = gameObject.GetComponentInChildren<AblyManagerBehavior>();
     }
 
     // Update is called once per frame
     void Update()
     {
+        if (timestamp.HasValue)
+        {
+            DateTimeOffset? startTime = ablyManager.startTimeAbly;
+            DateTimeOffset? msgTime = timestamp.GetValueOrDefault();
+            TimeSpan? diffTime = msgTime - startTime;
+            int ticksSince = ablyManager.ticksSinceStart;
+            float timeFromTicks = ticksSince * (1000 * Time.fixedDeltaTime);
+            if (timeFromTicks >= diffTime.Value.TotalMilliseconds + 1000)
+            {
+                timestamp = null;
+            }
+            else
+            {
+                return;
+            }
+        }
         GameObject target = null;
         // 1
         float minimalEnemyDistance = float.MaxValue;

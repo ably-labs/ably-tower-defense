@@ -1,0 +1,296 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>IO.Ably.DeltaCodec</name>
+    </assembly>
+    <members>
+        <member name="T:IO.Ably.DeltaCodec.DataHelpers">
+            <summary>
+            Helpers for converting string and base64 data to byte[] which can be consumed by the <see cref="T:IO.Ably.DeltaCodec.DeltaDecoder"/>
+            </summary>
+        </member>
+        <member name="M:IO.Ably.DeltaCodec.DataHelpers.ConvertToByteArray(System.Object)">
+            <summary>
+            Converts an object which can be `byte[]`, `utf-8 string` or `base64 encoded string`
+            to a `byte[]`
+            </summary>
+            <param name="data">object which can be `byte[]` or `string`</param>
+            <returns></returns>
+            <exception cref="T:System.ArgumentException">the object is not `byte[]` or `string`</exception>
+        </member>
+        <member name="M:IO.Ably.DeltaCodec.DataHelpers.TryConvertToDeltaByteArray(System.Object,System.Byte[]@)">
+            <summary>
+            Try to convert an object of type `byte[]` or `string` to a `byte[]` which can be used for delta calculations
+            Similar to <see cref="M:IO.Ably.DeltaCodec.DataHelpers.ConvertToByteArray(System.Object)"/> but doesn't throw exception if the incorrect type is passed.
+            </summary>
+            <param name="obj">object to be converted.</param>
+            <param name="delta">resulting `byte[]`.</param>
+            <returns>`true` or `false` depending on whether the conversion succeeded.</returns>
+        </member>
+        <member name="M:IO.Ably.DeltaCodec.DataHelpers.TryConvertFromBase64String(System.String,System.Byte[]@)">
+            <summary>
+            Try to convert a `base64` string to `byte[]`.
+            </summary>
+            <param name="str">base64 encoded string</param>
+            <param name="result">resulting byte[]</param>
+            <returns>`true` or `false` depending on whether the conversion succeeded.</returns>
+        </member>
+        <member name="T:IO.Ably.DeltaCodec.DeltaApplicationResult">
+            <summary>
+            Contains and manages the result of delta application
+            </summary>
+        </member>
+        <member name="M:IO.Ably.DeltaCodec.DeltaApplicationResult.AsByteArray">
+            <summary>
+            Exports the delta application result as byte[]
+            </summary>
+            <returns>byte[] representation of this delta application result</returns>
+        </member>
+        <member name="M:IO.Ably.DeltaCodec.DeltaApplicationResult.AsUtf8String">
+            <summary>
+            Exports the delta application result as string assuming the bytes in the result represent 
+            an UTF-8 encoded string.
+            </summary>
+            <returns>The UTF-8 string representation of this delta application result</returns>
+        </member>
+        <member name="T:IO.Ably.DeltaCodec.DeltaDecoder">
+            <summary>
+            VCDIFF decoder capable of processing continuous sequences of consecutively generated VCDIFFs.
+            </summary>
+        </member>
+        <member name="M:IO.Ably.DeltaCodec.DeltaDecoder.IsDelta(System.Byte[])">
+            <summary>
+            Checks if <paramref name="data"/> contains valid VCDIFF
+            </summary>
+            <param name="data">The data to be checked (byte[] or Base64-encoded string)</param>
+            <returns>True if <paramref name="data"/> contains valid VCDIFF, false otherwise</returns>
+        </member>
+        <member name="M:IO.Ably.DeltaCodec.DeltaDecoder.ApplyDelta(System.Byte[],System.String,System.String)">
+            <summary>
+            Applies the <paramref name="delta"/> to the result of applying the previous delta or to the base data if no previous delta has been applied yet.
+            Base data has to be set by <see cref="M:IO.Ably.DeltaCodec.DeltaDecoder.SetBase(System.Byte[],System.String)"/> before calling this method for the first time.
+            </summary>
+            <param name="delta">The delta to be applied</param>
+            <param name="deltaId">(Optional) Sequence ID of the current delta application result. If set, it will be used for sequence continuity check during the next delta application</param>
+            <param name="baseId">(Optional) Sequence ID of the expected previous delta application result. If set, it will be used to perform sequence continuity check agains the last preserved sequence ID</param>
+            <returns><see cref="T:IO.Ably.DeltaCodec.DeltaApplicationResult"/> instance</returns>
+            <exception cref="T:System.InvalidOperationException">The decoder is not initialized by calling <see cref="M:IO.Ably.DeltaCodec.DeltaDecoder.SetBase(System.Byte[],System.String)"/></exception>
+            <exception cref="T:IO.Ably.DeltaCodec.SequenceContinuityException">The provided <paramref name="baseId"/> does not match the last preserved sequence ID</exception>
+            <exception cref="T:System.ArgumentException">The provided <paramref name="delta"/> is not a valid VCDIFF</exception>
+            <exception cref="T:IO.Ably.DeltaCodec.Vcdiff.VcdiffFormatException"></exception>
+        </member>
+        <member name="M:IO.Ably.DeltaCodec.DeltaDecoder.ApplyDelta(System.Byte[],System.Byte[])">
+            <summary>
+            Static stateless helper method that can apply a <paramref name="delta"/> to <paramref name="base"/> payload.
+            </summary>
+            <param name="base">The base payload</param>
+            <param name="delta">The delta to be applied</param>
+            <returns><see cref="T:IO.Ably.DeltaCodec.DeltaApplicationResult"/> instance</returns>
+        </member>
+        <member name="M:IO.Ably.DeltaCodec.DeltaDecoder.SetBase(System.Byte[],System.String)">
+            <summary>
+            Sets the base object used for the next delta application (see <see cref="M:IO.Ably.DeltaCodec.DeltaDecoder.ApplyDelta(System.Byte[],System.String,System.String)"/>).
+            </summary>
+            <param name="newBase">The base object to be set</param>
+            <param name="newBaseId">(Optional) The <paramref name="newBase"/>'s sequence ID, to be used for sequence continuity checking when delta is applied using <see cref="M:IO.Ably.DeltaCodec.DeltaDecoder.ApplyDelta(System.Byte[],System.String,System.String)"/></param>
+            <exception cref="T:System.ArgumentNullException">The provided <paramref name="newBase"/> parameter is null.</exception>
+        </member>
+        <member name="T:IO.Ably.DeltaCodec.SequenceContinuityException">
+            <summary>
+            Thrown when <see cref="T:IO.Ably.DeltaCodec.DeltaDecoder"/>'s built-in sequence continuity check fails
+            </summary>
+        </member>
+        <member name="T:IO.Ably.DeltaCodec.Vcdiff.AddressCache">
+            <summary>
+            Cache used for encoding/decoding addresses.
+            </summary>
+        </member>
+        <member name="T:IO.Ably.DeltaCodec.Vcdiff.Adler32">
+            <summary>
+            Implementation of the Adler32 checksum routine.
+            TODO: Derive from HashAlgorithm.
+            </summary>
+        </member>
+        <member name="F:IO.Ably.DeltaCodec.Vcdiff.Adler32.Base">
+            <summary>
+            Base for modulo arithmetic
+            </summary>
+        </member>
+        <member name="F:IO.Ably.DeltaCodec.Vcdiff.Adler32.NMax">
+            <summary>
+            Number of iterations we can safely do before applying the modulo.
+            </summary>
+        </member>
+        <member name="M:IO.Ably.DeltaCodec.Vcdiff.Adler32.ComputeChecksum(System.Int32,System.Byte[],System.Int32,System.Int32)">
+            <summary>
+            Computes the Adler32 checksum for the given data.
+            </summary>
+            <param name="initial">
+            Initial value or previous result. Use 1 for the
+            first transformation.
+            </param>
+            <param name="data">The data to compute the checksum of</param>
+            <param name="start">Index of first byte to compute checksum for</param>
+            <param name="length">Number of bytes to compute checksum for</param>
+            <returns>The checksum of the given data</returns>
+        </member>
+        <member name="M:IO.Ably.DeltaCodec.Vcdiff.Adler32.ComputeChecksum(System.Int32,System.Byte[])">
+            <summary>
+            Computes the Adler32 checksum for the given data.
+            </summary>
+            <param name="initial">
+            Initial value or previous result. Use 1 for the
+            first transformation.
+            </param>
+            <param name="data">The data to compute the checksum of</param>
+            <returns>The checksum of the given data</returns>
+        </member>
+        <member name="M:IO.Ably.DeltaCodec.Vcdiff.Adler32.ComputeChecksum(System.IO.Stream)">
+            <summary>
+            Computes the checksum for a stream, starting from the current
+            position and reading until no more can be read
+            </summary>
+            <param name="stream">The stream to compute the checksum for</param>
+            <returns>The checksum for the stream</returns>
+        </member>
+        <member name="M:IO.Ably.DeltaCodec.Vcdiff.Adler32.ComputeChecksum(System.String)">
+            <summary>
+            Computes the checksum of a file
+            </summary>
+            <param name="path">The file to compute the checksum of</param>
+            <returns>The checksum for the file</returns>
+        </member>
+        <member name="T:IO.Ably.DeltaCodec.Vcdiff.CodeTable">
+            <summary>
+            Table used to encode/decode instructions.
+            </summary>
+        </member>
+        <member name="F:IO.Ably.DeltaCodec.Vcdiff.CodeTable.Default">
+            <summary>
+            Default code table specified in RFC 3284.
+            </summary>
+        </member>
+        <member name="F:IO.Ably.DeltaCodec.Vcdiff.CodeTable.entries">
+            <summary>
+            Array of entries in the code table
+            </summary>
+        </member>
+        <member name="P:IO.Ably.DeltaCodec.Vcdiff.CodeTable.Item(System.Int32,System.Int32)">
+            <summary>
+            
+            </summary>
+        </member>
+        <member name="M:IO.Ably.DeltaCodec.Vcdiff.CodeTable.BuildDefaultCodeTable">
+            <summary>
+            Builds the default code table specified in RFC 3284
+            </summary>
+            <returns>
+            The default code table.
+            </returns>
+        </member>
+        <member name="T:IO.Ably.DeltaCodec.Vcdiff.Instruction">
+            <summary>
+            Contains the information for a single instruction
+            </summary>
+        </member>
+        <member name="T:IO.Ably.DeltaCodec.Vcdiff.InstructionType">
+            <summary>
+            Enumeration of the different instruction types.
+            </summary>
+        </member>
+        <member name="T:IO.Ably.DeltaCodec.Vcdiff.IOHelper">
+            <summary>
+            A few IO routines to make life easier. Most are basically available
+            in EndianBinaryReader, but having them separately here makes VcdiffDecoder
+            more easily movable to other places - and no endianness issues are involved in
+            the first place.
+            </summary>
+        </member>
+        <member name="T:IO.Ably.DeltaCodec.Vcdiff.VcdiffDecoder">
+            <summary>
+            Decoder for VCDIFF (RFC 3284) streams.
+            </summary>
+        </member>
+        <member name="F:IO.Ably.DeltaCodec.Vcdiff.VcdiffDecoder.original">
+            <summary>
+            Reader containing original data, if any. May be null.
+            If non-null, will be readable and seekable.
+            </summary>
+        </member>
+        <member name="F:IO.Ably.DeltaCodec.Vcdiff.VcdiffDecoder.delta">
+            <summary>
+            Stream containing delta data. Will be readable.
+            </summary>
+        </member>
+        <member name="F:IO.Ably.DeltaCodec.Vcdiff.VcdiffDecoder.output">
+            <summary>
+            Stream containing target data. Will be readable,
+            writable and seekable.
+            </summary>
+        </member>
+        <member name="F:IO.Ably.DeltaCodec.Vcdiff.VcdiffDecoder.codeTable">
+            <summary>
+            Code table to use for decoding.
+            </summary>
+        </member>
+        <member name="F:IO.Ably.DeltaCodec.Vcdiff.VcdiffDecoder.cache">
+            <summary>
+            Address cache to use when decoding; must be reset before decoding each window.
+            Default to the default size.
+            </summary>
+        </member>
+        <member name="M:IO.Ably.DeltaCodec.Vcdiff.VcdiffDecoder.#ctor(System.IO.Stream,System.IO.Stream,System.IO.Stream)">
+            <summary>
+            Sole constructor; private to prevent instantiation from
+            outside the class.
+            </summary>
+        </member>
+        <member name="M:IO.Ably.DeltaCodec.Vcdiff.VcdiffDecoder.Decode(System.IO.Stream,System.IO.Stream,System.IO.Stream)">
+            <summary>
+            Decodes an original stream and a delta stream, writing to a target stream.
+            The original stream may be null, so long as the delta stream never
+            refers to it. The original and delta streams must be readable, and the
+            original stream (if any) and the target stream must be seekable. 
+            The target stream must be writable and readable. The original and target
+            streams are rewound to their starts before any data is read; the relevant data
+            must occur at the beginning of the original stream, and any data already present
+            in the target stream may be overwritten. The delta data must begin
+            wherever the delta stream is currently positioned. The delta stream must end
+            after the last window. The streams are not disposed by this method.
+            </summary>
+            <param name="original">Stream containing delta. May be null.</param>
+            <param name="delta">Stream containing delta data.</param>
+            <param name="output">Stream to write resulting data to.</param>
+        </member>
+        <member name="M:IO.Ably.DeltaCodec.Vcdiff.VcdiffDecoder.Decode">
+            <summary>
+            Top-level decoding method. When this method exits, all decoding has been performed.
+            </summary>
+        </member>
+        <member name="M:IO.Ably.DeltaCodec.Vcdiff.VcdiffDecoder.ReadHeader">
+            <summary>
+            Read the header, including any custom code table. The delta stream is left
+            positioned at the start of the first window.
+            </summary>
+        </member>
+        <member name="M:IO.Ably.DeltaCodec.Vcdiff.VcdiffDecoder.ReadCodeTable">
+            <summary>
+            Reads the custom code table, if there is one
+            </summary>
+        </member>
+        <member name="M:IO.Ably.DeltaCodec.Vcdiff.VcdiffDecoder.DecodeWindow">
+            <summary>
+            Reads and decodes a window, returning whether or not there was
+            any more data to read.
+            </summary>
+            <returns>
+            Whether or not the delta stream had reached the end of its data.
+            </returns>
+        </member>
+        <member name="T:IO.Ably.DeltaCodec.Vcdiff.VcdiffFormatException">
+            <summary>
+            Summary description for VcdiffFormatException.
+            </summary>
+        </member>
+    </members>
+</doc>
