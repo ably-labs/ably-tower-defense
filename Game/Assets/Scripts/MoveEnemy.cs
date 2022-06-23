@@ -74,6 +74,7 @@ public class MoveEnemy : MonoBehaviour
                 Destroy(gameObject);
 
                 AudioSource audioSource = gameObject.GetComponent<AudioSource>();
+                audioSource.volume = 0.01f;
                 AudioSource.PlayClipAtPoint(audioSource.clip, transform.position);
 
                 GameManagerBehavior gameManager =

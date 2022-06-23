@@ -31,12 +31,17 @@
 using UnityEngine;
 using System.Collections;
 using UnityEngine.SceneManagement;
+using System.Runtime.InteropServices;
 
 public class GameOver : MonoBehaviour
 {
+    [DllImport("__Internal")]
+    public static extern void Publish(string name, string data);
 
     void RestartLevel()
     {
+        Time.timeScale = 1;
+        Publish("stop", "stop");
         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
 

@@ -61,7 +61,8 @@ public class GameManagerBehavior : MonoBehaviour
         set
         {
             wave = value;
-            if (!gameOver)
+         
+            if (!gameOver && wave != 0)
             {
                 for (int i = 0; i < nextWaveLabels.Length; i++)
                 {
@@ -116,6 +117,7 @@ public class GameManagerBehavior : MonoBehaviour
     {
         Gold = 1000;
         Health = 5;
+        Wave = 0;
     }
 
     // Update is called once per frame

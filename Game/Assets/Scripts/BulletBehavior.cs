@@ -76,6 +76,7 @@ public class BulletBehavior : MonoBehaviour
                 {
                     Destroy(target);
                     AudioSource audioSource = target.GetComponent<AudioSource>();
+                    audioSource.volume = 0.01f;
                     AudioSource.PlayClipAtPoint(audioSource.clip, transform.position);
 
                     gameManager.Gold += 50;

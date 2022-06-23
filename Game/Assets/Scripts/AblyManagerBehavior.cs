@@ -1,15 +1,14 @@
 using System;
-using System.Collections.Generic;
-using IO.Ably;
-using IO.Ably.Realtime;
 using UnityEngine;
+using System.Runtime.InteropServices;
 
 public class AblyManagerBehavior : MonoBehaviour
 {
-    private AblyRealtime realtime = new AblyRealtime(
-        new ClientOptions { Key = "INSERT_YOUR_ABLY_API_KEY_HERE" }
-      );
-    public IRealtimeChannel gameChannel;
+    [DllImport("__Internal")]
+    private static extern void Connect(string id);
+
+    [DllImport("__Internal")]
+    public static extern void Publish(string name, string data);
 
     public bool started = false;
     public DateTimeOffset? startTimeAbly;
@@ -20,44 +19,34 @@ public class AblyManagerBehavior : MonoBehaviour
     // Start is called before the first frame update
     void Awake()
     {
-        gameChannel = realtime.Channels.Get("game:" + StateManagerBehavior.Instance.GameID);
-        CheckForOldMessages();
+
     }
 
-    async void CheckForOldMessages()
+    void Start()
     {
-        PaginatedRequestParams prp = new PaginatedRequestParams();
-        prp.Limit = 100;
-        PaginatedResult<Message> resultPage = await gameChannel.HistoryAsync(prp);
-        List<Message> msgs = resultPage.Items;
-        // We need to only use rewind to the most recent start message to avoid starting from a prior game
-        for (int i=0; i < msgs.Count; i++)
-        {
-            if(msgs[i].Name == "start")
-            {
-                ChannelParams channelParams = new ChannelParams();
-                channelParams.Add("rewind", "" + i);
-                ChannelOptions channelOptions = new ChannelOptions();
-                channelOptions.Params = channelParams;
-                gameChannel.SetOptions(channelOptions);
-                break;
-            }
-        }
-        gameChannel.Subscribe("start", (msg) =>
-        {
-            StartGame(msg.Timestamp);
-        });
+        Connect(StateManagerBehavior.Instance.GameID);
     }
 
-    public void StartGame(DateTimeOffset? timestamp)
+    public void AblyPublish(string name, string data)
     {
-        if (!started) startTimeAbly = timestamp;
+        Publish(name, data);
+    }
+
+    public void StartGame(string timestamp)
+    {
+        DateTimeOffset time = DateTimeOffset.FromUnixTimeMilliseconds(Convert.ToInt64(timestamp));
+        if (!started) startTimeAbly = time;
         started = true;
     }
 
     public void SendStartGame()
     {
-        gameChannel.Publish("start", "");
+        if (started)
+        {
+            return;
+        }
+
+        AblyPublish("start", "");
     }
 
     void FixedUpdate()

@@ -60,6 +60,7 @@ public class SpawnEnemy : MonoBehaviour
         lastSpawnTime = Time.time;
         gameManager = GameObject.Find("GameManager").GetComponent<GameManagerBehavior>();
         ablyManager = GameObject.Find("AblyManager").GetComponent<AblyManagerBehavior>();
+        gameManager.Wave = 0;
     }
 
     // Update is called once per frame
@@ -94,7 +95,11 @@ public class SpawnEnemy : MonoBehaviour
             if (enemiesSpawned == waves[currentWave].maxEnemies &&
                 GameObject.FindGameObjectWithTag("Enemy") == null)
             {
-                gameManager.Wave++;
+                if (currentWave != waves.Length - 1)
+                {
+                    gameManager.Wave++;
+                }
+           
                 gameManager.Gold = Mathf.RoundToInt(gameManager.Gold * 1.1f);
                 enemiesSpawned = 0;
                 lastSpawnTime = Time.time;

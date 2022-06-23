@@ -52,14 +52,22 @@ public class PlaceMonster : MonoBehaviour
     {
         gameManager = GameObject.Find("GameManager").GetComponent<GameManagerBehavior>();
         ablyManager = GameObject.Find("AblyManager").GetComponent<AblyManagerBehavior>();
-        ablyManager.gameChannel.Subscribe("spot:" + name, message =>
+    }
+
+    public void MsgFromAbly(string data)
+    {
+        if (!ablyManager.started)
         {
-            // Need to uniquely identify actions to avoid unintentional upgrade when trying to place, etc.
-            PlaceMonsterData pmd = new PlaceMonsterData();
-            pmd.monsterID = int.Parse((string)message.Data);
-            pmd.timestamp = message.Timestamp;
-            actions.Enqueue(pmd);
-        });
+            return;
+        }
+
+        int found = data.IndexOf(":");
+        data.Substring(found + 2);
+
+        PlaceMonsterData pmd = new PlaceMonsterData();
+        pmd.monsterID = int.Parse(data.Substring(found + 1));
+        pmd.timestamp = DateTimeOffset.FromUnixTimeMilliseconds(Convert.ToInt64(data.Substring(0, found)));
+        actions.Enqueue(pmd);
     }
 
     // Update is called once per frame
@@ -75,7 +83,12 @@ public class PlaceMonster : MonoBehaviour
 
         if (!diffTime.HasValue)
         {
-            PlaceOrUpgradeMonster(pmd.monsterID, msgTime);
+            actions.Dequeue();
+            if (pmd.monsterID != -1)
+            {
+                PlaceOrUpgradeMonster(pmd.monsterID, msgTime);
+            }
+
             return;
         }
 
@@ -88,7 +101,10 @@ public class PlaceMonster : MonoBehaviour
         {
             Time.timeScale = 1;
             actions.Dequeue();
-            PlaceOrUpgradeMonster(pmd.monsterID, msgTime);
+            if (pmd.monsterID != -1)
+            {
+                PlaceOrUpgradeMonster(pmd.monsterID, msgTime);
+            }
         }
     }
 
@@ -98,17 +114,21 @@ public class PlaceMonster : MonoBehaviour
         return monster == null && gameManager.Gold >= cost;
     }
 
-
     void OnMouseUp()
     {
+        if (!ablyManager.started)
+        {
+            return;
+        }
+
         if (CanPlaceMonster())
         {
-            ablyManager.gameChannel.Publish("spot:" + name, "0");
+            ablyManager.AblyPublish("spot:" + name, "0");
         }
         else if (CanUpgradeMonster())
         {
             MonsterData monsterData = monster.GetComponent<MonsterData>();
-            ablyManager.gameChannel.Publish("spot:" + name, monsterData.levels.IndexOf(monsterData.getNextLevel()).ToString());
+            ablyManager.AblyPublish("spot:" + name, monsterData.levels.IndexOf(monsterData.getNextLevel()).ToString());
         }
     }
 
@@ -119,6 +139,7 @@ public class PlaceMonster : MonoBehaviour
             monster = (GameObject)Instantiate(monsterPrefab, transform.position, Quaternion.identity);
             monster.GetComponent<ShootEnemies>().timestamp = timestamp;
             AudioSource audioSource = gameObject.GetComponent<AudioSource>();
+            audioSource.volume = 0.01f;
             audioSource.PlayOneShot(audioSource.clip);
 
             gameManager.Gold -= monster.GetComponent<MonsterData>().CurrentLevel.cost;
@@ -131,6 +152,7 @@ public class PlaceMonster : MonoBehaviour
                 monster.GetComponent<MonsterData>().increaseLevel();
                 monster.GetComponent<ShootEnemies>().timestamp = timestamp;
                 AudioSource audioSource = gameObject.GetComponent<AudioSource>();
+                audioSource.volume = 0.01f;
                 audioSource.PlayOneShot(audioSource.clip);
 
                 gameManager.Gold -= monster.GetComponent<MonsterData>().CurrentLevel.cost;

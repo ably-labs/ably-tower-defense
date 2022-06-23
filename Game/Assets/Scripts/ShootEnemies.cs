@@ -49,7 +49,7 @@ public class ShootEnemies : MonoBehaviour
         enemiesInRange = new List<GameObject>();
         lastShotTime = Time.time;
         monsterData = gameObject.GetComponentInChildren<MonsterData>();
-        ablyManager = gameObject.GetComponentInChildren<AblyManagerBehavior>();
+        ablyManager = GameObject.Find("AblyManager").GetComponent<AblyManagerBehavior>();
     }
 
     // Update is called once per frame
@@ -58,6 +58,10 @@ public class ShootEnemies : MonoBehaviour
         if (timestamp.HasValue)
         {
             DateTimeOffset? startTime = ablyManager.startTimeAbly;
+            if (!startTime.HasValue)
+            {
+                return;
+            }
             DateTimeOffset? msgTime = timestamp.GetValueOrDefault();
             TimeSpan? diffTime = msgTime - startTime;
             int ticksSince = ablyManager.ticksSinceStart;
@@ -148,6 +152,7 @@ public class ShootEnemies : MonoBehaviour
             monsterData.CurrentLevel.visualization.GetComponent<Animator>();
         animator.SetTrigger("fireShot");
         AudioSource audioSource = gameObject.GetComponent<AudioSource>();
+        audioSource.volume = 0.01f;
         audioSource.PlayOneShot(audioSource.clip);
     }
 
